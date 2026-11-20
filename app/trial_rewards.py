@@ -15,6 +15,7 @@ import time
 import httpx
 
 from .client_profiles import identity_headers
+from .settings import verify_ssl
 from .credential_io import credential_file_lock
 from .site_routing import PROFILE_ENDPOINTS, profile_for_headers
 
@@ -74,7 +75,8 @@ def claim_trial(headers: dict) -> dict:
     request_headers = httpx.Headers(headers)
     request_headers["Accept-Encoding"] = "identity"
     try:
-        with httpx.Client(timeout=REQUEST_TIMEOUT, follow_redirects=False) as client:
+        with httpx.Client(timeout=REQUEST_TIMEOUT, follow_redirects=False,
+                      verify=verify_ssl()) as client:
             with client.stream("POST", PROFILE_ENDPOINTS["intl-work"] + "/billing/ide/trial",
                                headers=request_headers, json={}) as response:
                 status = response.status_code

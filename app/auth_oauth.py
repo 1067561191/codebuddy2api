@@ -14,6 +14,7 @@ import uuid
 import httpx
 
 from .client_profiles import canonical_uid, refresh_headers
+from .settings import verify_ssl
 from .site_routing import PROFILE_DOMAINS, PROFILE_ENDPOINTS, profile_for_auth, refresh_url_for_auth
 
 PLUGIN_PREFIX = "/v2/plugin"
@@ -92,7 +93,7 @@ def refresh_tokens(refresh_token, profile, *, uid="") -> dict:
     headers["X-Refresh-Token"] = token
     headers["X-Auth-Refresh-Source"] = "plugin"
     try:
-        with httpx.Client(timeout=REQUEST_TIMEOUT_S) as client:
+        with httpx.Client(timeout=REQUEST_TIMEOUT_S, verify=verify_ssl()) as client:
             response = client.post(refresh_url_for_auth({"domain": domain}), headers=headers, json={})
     except httpx.HTTPError as error:
         raise RuntimeError(f"刷新令牌网络失败: {type(error).__name__}") from None
@@ -127,7 +128,7 @@ def fetch_account(access_token, domain) -> dict:
     headers["Authorization"] = f"Bearer {access_token}"
     url = PROFILE_ENDPOINTS[profile] + PLUGIN_PREFIX + "/login/account"
     try:
-        with httpx.Client(timeout=REQUEST_TIMEOUT_S) as client:
+        with httpx.Client(timeout=REQUEST_TIMEOUT_S, verify=verify_ssl()) as client:
             response = client.get(url, headers=headers)
     except httpx.HTTPError as error:
         raise RuntimeError(f"账号信息网络失败: {type(error).__name__}") from None
@@ -329,7 +330,8 @@ class OAuthManager:
         self._http_factory = http_factory    # Optional test transport factory
 
     def _client(self):
-        return self._http_factory() if self._http_factory else httpx.Client(timeout=REQUEST_TIMEOUT_S)
+        return (self._http_factory() if self._http_factory
+                else httpx.Client(timeout=REQUEST_TIMEOUT_S, verify=verify_ssl()))
 
     def _headers(self) -> dict:
         return {"User-Agent": self._ua, "Accept": "application/json",

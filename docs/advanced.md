@@ -44,6 +44,7 @@ Runtime keys in `.env` stay read-only in the WebUI until they are moved into the
 | `--max-concurrent` | `64` | Concurrency limit for the three generation endpoints only; excess requests get 503 with Retry-After; token counting is unaffected; `0` disables |
 | `--max-inflight-per-account` | `0` | Per-process, per-account in-flight client inference limit; `0` disables, full accounts return 503 |
 | `--upstream-keepalive [true/false]` | `false` | Bounded connection reuse isolated by official origin; requires restart |
+| `--verify-ssl [true/false]` | `true` | Outbound HTTPS certificate verification for upstream, update and mirror clients; `false` disables it process-wide and requires restart; only for trusted paths with TLS interception |
 | `--request-context-mode` | `legacy` | `scoped` enables explicit sessions and per-attempt tracing; changes apply to new requests |
 | `--failover-max` | `0` | Extra credentials tried when a request fails before the first response byte reaches the client; `0` keeps the upstream behaviour of surfacing the failure directly |
 | `--retry-write-timeout` | `false` | Opt a request-body write timeout into replay (fresh connection and `--failover-max`), accepting that bytes already sent may have been processed |

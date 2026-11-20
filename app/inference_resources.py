@@ -9,6 +9,7 @@ import threading
 
 import httpx
 
+from app.settings import verify_ssl
 from app.site_routing import PROFILE_ENDPOINTS
 from app.request_context import PATHS, with_request_context
 
@@ -42,6 +43,7 @@ class UpstreamClients:
         if origin not in self._clients:
             self._clients[origin] = httpx.AsyncClient(
                 cookies=CookieJar(policy=_RejectCookies()), http2=False,
+                verify=verify_ssl(),
                 limits=httpx.Limits(max_connections=64, max_keepalive_connections=16, keepalive_expiry=30))
         return self._clients[origin]
 

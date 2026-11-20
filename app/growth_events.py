@@ -14,6 +14,9 @@ import time
 
 import httpx
 
+from .settings import verify_ssl
+
+
 DESKTOP_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) WorkBuddyDesktop/5.9.3 "
               "Chrome/148.0.7778.97 Electron/41.8.1 Safari/537.36")
 WEB_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -51,7 +54,7 @@ def fingerprint(uid, nickname=""):
 
 
 def _post_json(base, path, headers, payload):
-    with httpx.Client(follow_redirects=False) as client:
+    with httpx.Client(follow_redirects=False, verify=verify_ssl()) as client:
         response = client.post(base + path, headers=headers, json=payload, timeout=15)
     if response.status_code != 200:
         raise Failure("http", response.status_code)
@@ -248,7 +251,8 @@ def desktop_chat(base, headers, expert_id="", model=FAST_MODEL, prompt="1+1ç­‰äº
     outgoing.pop("X-Client-Platform", None)
     if expert_id:
         outgoing["X-Expert-Id"] = expert_id
-    with httpx.Client(follow_redirects=False, timeout=httpx.Timeout(60, connect=10)) as client:
+    with httpx.Client(follow_redirects=False, timeout=httpx.Timeout(60, connect=10),
+                      verify=verify_ssl()) as client:
         with client.stream("POST", base + "/v2/chat/completions", headers=outgoing, json=body) as response:
             if response.status_code != 200:
                 raise Failure("http", response.status_code)

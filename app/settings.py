@@ -143,6 +143,9 @@ SCHEMA = {
                                  env="CODEBUDDY2API_RETRY_WRITE_TIMEOUT"),
     "upstream_keepalive": _item(False, "boolean", "上游连接复用", mode="restart",
                                 env="CODEBUDDY2API_UPSTREAM_KEEPALIVE"),
+    # Outbound TLS verification; off only for trusted paths with an intercepting proxy.
+    "verify_ssl": _item(True, "boolean", "校验上游 HTTPS 证书", mode="restart",
+                        env="CODEBUDDY2API_VERIFY_SSL"),
     "max_inflight_per_account": _item(0, "integer", "单账号在途上限（0 不限制）",
                                       env="CODEBUDDY2API_MAX_INFLIGHT_PER_ACCOUNT", minimum=0, maximum=10000),
     "request_context_mode": _item("legacy", "string", "请求上下文模式",
@@ -219,6 +222,19 @@ def validate_settings(values, *, legacy=False):
             value = spec["validator"](value)
         clean[key] = value
     return clean
+
+
+def verify_ssl() -> bool:
+    """Whether outbound httpx clients must verify TLS certificates.
+
+    Every client passes this as `verify=`, so `verify_ssl=false` (CLI, environment or WebUI)
+    turns verification off process-wide. Only use it when the path is trusted: without
+    verification anyone on the path can read and rewrite upstream requests and credentials.
+    """
+    value = os.environ.get("CODEBUDDY2API_VERIFY_SSL")
+    if value is None:
+        return True
+    return value.strip().lower() not in ("0", "false", "no", "off")
 
 
 def apply_persisted_settings(config, explicit=(), environ=None):

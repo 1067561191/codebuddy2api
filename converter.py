@@ -66,7 +66,7 @@ from app.adapters.anthropic_adapter import (
 )
 
 from app import auth_oauth
-from app.settings import SCHEMA
+from app.settings import SCHEMA, verify_ssl
 # Re-exported for app.runtime_management and the tests, which reach it as ``gateway.trial_rewards``.
 from app import trial_rewards  # noqa: F401
 from app import buddy, daily_chat, growth_chains, growth_tasks, checkin as checkin_service, model_policy, travel
@@ -384,7 +384,7 @@ class CredentialManager:
         headers["X-Auth-Refresh-Source"] = "plugin"
         url = refresh_url_for_auth(auth)
         try:
-            with httpx.Client(timeout=15) as c:
+            with httpx.Client(timeout=15, verify=verify_ssl()) as c:
                 r = c.post(url, headers=headers, json={})
             data = r.json()
         except Exception as e:
@@ -6054,7 +6054,8 @@ async def _media_download_bytes(url: str, rid: str) -> bytes:
     """Fetch one upstream resource into memory, bounded by the configured media quota."""
     limit = _media_max_bytes()
     data = bytearray()
-    async with httpx.AsyncClient(timeout=MEDIA_DOWNLOAD_TIMEOUT, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=MEDIA_DOWNLOAD_TIMEOUT, follow_redirects=True,
+                                 verify=verify_ssl()) as client:
         try:
             async with client.stream("GET", url) as response:
                 if response.status_code != 200:
@@ -7364,6 +7365,10 @@ def main():
     ap.add_argument("--upstream-keepalive", type=_boolean_arg, nargs="?", const=True,
                     default=os.environ.get("CODEBUDDY2API_UPSTREAM_KEEPALIVE", "false"),
                     help="按上游入口复用有界连接池，默认 false；重启生效，不改变超时或重放规则")
+    ap.add_argument("--verify-ssl", type=_boolean_arg, nargs="?", const=True,
+                    default=os.environ.get("CODEBUDDY2API_VERIFY_SSL", "true"),
+                    help="校验证书时保持 true；false 关闭出站 HTTPS 证书校验（含上游、更新与镜像），"
+                         "仅当链路可信时使用，重启生效")
     ap.add_argument("--request-context-mode", choices=("legacy", "scoped"),
                     default=os.environ.get("CODEBUDDY2API_REQUEST_CONTEXT_MODE", "legacy"),
                     help="请求上下文：legacy 保持旧会话头，scoped 启用显式会话与逐尝试追踪；默认 legacy")
@@ -7418,7 +7423,8 @@ def main():
 
     for key in ("max_images", "image_policy", "max_request_bytes", "log_body_limit",
                 "tool_call_max_retry", "max_inbound_bytes", "max_collect_bytes", "max_concurrent",
-                "failover_max", "retry_write_timeout", "upstream_keepalive", "max_inflight_per_account",
+                "failover_max", "retry_write_timeout", "upstream_keepalive", "verify_ssl",
+                "max_inflight_per_account",
                 "request_context_mode", "prompt_mode", "stream_mode", "model_capability_guard", "admin_allowed_origins",
                 "responses_projection_mode", "responses_projection_max_bytes", "routing_scheduler",
                 "catalog_probe_mode"):

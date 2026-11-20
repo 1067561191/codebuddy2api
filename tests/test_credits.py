@@ -366,6 +366,8 @@ def test_daily_checkin_http(monkey_response=None):
             return self._payload
 
     class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
         def __enter__(self):
             return self
         def __exit__(self, *a):
@@ -403,6 +405,8 @@ def test_fetch_credits_http():
             ]}}}}
 
     class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
         def __enter__(self):
             return self
         def __exit__(self, *a):
@@ -478,6 +482,8 @@ def test_fetch_model_catalog():
             ]}}
 
     class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
         def __enter__(self):
             return self
         def __exit__(self, *a):
@@ -566,6 +572,8 @@ def _fake_client(pages, seen=None):
             return self._p
 
     class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
         def __enter__(self):
             return self
         def __exit__(self, *a):
@@ -632,6 +640,8 @@ def test_fetch_credits_diagnoses_non_json_response():
             raise ValueError("not JSON")
 
     class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
         def __enter__(self):
             return self
 
@@ -721,6 +731,8 @@ def test_fetch_credits_paginates_until_short_page():
     sequence = [full_page, {"code": 0, "data": {"Response": {"Data": {"Accounts": []}}}}, short_page]
 
     class FlakyClient:
+        def __init__(self, *args, **kwargs):
+            pass
         def __enter__(self):
             return self
         def __exit__(self, *a):
@@ -884,6 +896,8 @@ def test_fetch_request_usage_paging():
             return self._p
 
     class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
         def __enter__(self):
             return self
         def __exit__(self, *a):

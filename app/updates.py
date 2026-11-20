@@ -30,6 +30,7 @@ import time
 import httpx
 
 from .backups import BackupError, Backups
+from .settings import verify_ssl
 from .startup import request_restart
 
 REPOSITORY = "maiphucgiang/codebuddy2api"
@@ -128,6 +129,7 @@ class Updater:
             # go out without credentials so no mirror ever observes the token.
             headers["Authorization"] = f"Bearer {token}"
         return httpx.Client(transport=self._transport, timeout=timeout, follow_redirects=True,
+                            verify=verify_ssl(),
                             headers=headers)
 
     def _get(self, url, limit, *, token=""):

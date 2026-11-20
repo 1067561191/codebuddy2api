@@ -12,6 +12,7 @@ import json
 import httpx
 
 from app.content_filter import ContentFilterDetector
+from app.settings import verify_ssl
 from app.upstream_compat import should_channel_fallback
 from app.site_routing import profile_for_headers
 
@@ -448,7 +449,7 @@ async def _attempt_client(url, timeout, clients):
     if client is not None:
         yield client
     else:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx.AsyncClient(timeout=timeout, verify=verify_ssl()) as client:
             yield client
 
 

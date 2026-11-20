@@ -26,6 +26,7 @@ import time
 import httpx
 
 from .observability import normalize_usage
+from .settings import verify_ssl
 from .site_routing import profile_for_headers
 from .upstream_compat import channel_fallback_url
 from .upstream_io import open_backend_stream_sync
@@ -205,7 +206,8 @@ def probe_once(url, headers, model, *, timeout=120.0):
     request_headers = {**headers, "Accept": "text/event-stream"}
     if profile_for_headers(headers) == "cn-work":
         request_headers.update({"X-Agent-Type": "auxiliary", "X-Agent-Runtime": "local-agent"})
-    with httpx.Client(follow_redirects=False, timeout=httpx.Timeout(timeout, connect=10)) as client:
+    with httpx.Client(follow_redirects=False, timeout=httpx.Timeout(timeout, connect=10),
+                      verify=verify_ssl()) as client:
         with open_backend_stream_sync(
                 client, url, request_headers, body,
                 fallback_url=channel_fallback_url(url)) as (response, raw):

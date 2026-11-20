@@ -17,6 +17,7 @@ import httpx
 
 from .client_profiles import catalog_headers, credential_headers, enterprise_id_of
 from .safe_logging import sanitize_log_text
+from .settings import verify_ssl
 from .site_routing import PROFILE_ENDPOINTS, profile_for_auth, profile_product
 
 BROWSER_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -184,7 +185,7 @@ def _checkin_request(access_token, uid, domain, path):
     if profile_for_auth({"accessToken": access_token, "domain": domain}) == "cn-work":
         headers.update({"X-Request-ID": secrets.token_hex(16), "User-Agent": "axios/1.16.1"})
     url = host + path
-    with httpx.Client() as client:
+    with httpx.Client(verify=verify_ssl()) as client:
         try:
             status, payload = _post_json(client, url, headers, {})
         except AuthExpiredError:
@@ -524,7 +525,7 @@ def resolve_enterprise_id(access_token: str, uid: str = "", domain: str = "") ->
     url = host + ENTERPRISE_ACCOUNTS_PATH
     headers = _web_headers(host, access_token, uid, domain)
     try:
-        with httpx.Client() as client:
+        with httpx.Client(verify=verify_ssl()) as client:
             status, payload = _get_json(client, url, headers)
     except httpx.HTTPError:
         return None
@@ -550,7 +551,7 @@ def fetch_enterprise_credits(access_token: str, uid: str = "", domain: str = "",
     url = host + ENTERPRISE_USAGE_PATH
     headers = _web_headers(host, access_token, uid, domain, enterprise_id)
     try:
-        with httpx.Client() as client:
+        with httpx.Client(verify=verify_ssl()) as client:
             status, payload = _post_json(client, url, headers, {})
     except AuthExpiredError:
         raise
@@ -604,7 +605,7 @@ def fetch_credits(access_token: str, uid: str = "", domain: str = "",
     headers = _web_headers(host, access_token, uid, domain)
     accounts: list = []
     partial = False
-    with httpx.Client() as client:
+    with httpx.Client(verify=verify_ssl()) as client:
         page = 0
         while True:
             page += 1
@@ -740,7 +741,7 @@ def fetch_personal_model_scopes(access_token: str, user_agent: str = "", *, doma
     if user_agent:
         headers["User-Agent"] = user_agent
     try:
-        with httpx.Client() as client:
+        with httpx.Client(verify=verify_ssl()) as client:
             response = client.get(BILLING_PROFILE_HOSTS[profile] + PERSONAL_MODELS_PATH,
                                   headers=headers, timeout=REQUEST_TIMEOUT)
     except httpx.HTTPError:
@@ -777,7 +778,7 @@ def _fetch_config_model_scopes(access_token: str, user_agent: str = "", *, domai
     profile = profile_for_auth(auth)
     headers = catalog_headers(auth, {"uid": uid, "enterpriseId": enterprise_id}, user_agent=user_agent)
     try:
-        with httpx.Client() as client:
+        with httpx.Client(verify=verify_ssl()) as client:
             response = client.get(PROFILE_ENDPOINTS[profile] + CONFIG_PATH, headers=headers,
                                   timeout=REQUEST_TIMEOUT)
     except httpx.HTTPError:
@@ -929,7 +930,7 @@ def fetch_request_usage(access_token: str, days: int = USAGE_MAX_DAYS,
     total_credits = 0.0
     requests = 0
     partial = False
-    with httpx.Client() as client:
+    with httpx.Client(verify=verify_ssl()) as client:
         for page in range(1, USAGE_MAX_PAGES + 1):
             status, payload = _post_json(client, url, headers,
                                          dict(body_base, pageNum=page, pageSize=USAGE_PAGE_SIZE))

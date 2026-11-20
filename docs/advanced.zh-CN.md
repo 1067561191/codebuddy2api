@@ -44,6 +44,7 @@ Compose 会加载 `.env` 中的每个键，注释掉一行即可解除锁定；�
 | `--max-concurrent` | `64` | 仅限制三个生成端点；占满立即 503（含 Retry-After），不限制 token 估算；`0` 不限制 |
 | `--max-inflight-per-account` | `0` | 每进程、每账号的客户端推理在途上限；`0` 不限制，满载立即 503 |
 | `--upstream-keepalive [true/false]` | `false` | 启用按官方入口隔离的有界连接复用；重启生效 |
+| `--verify-ssl [true/false]` | `true` | 上游、更新与镜像等全部出站客户端的 HTTPS 证书校验；`false` 全进程关闭且需重启；仅用于链路可信且存在 TLS 中间人的环境 |
 | `--request-context-mode` | `legacy` | `scoped` 启用显式会话与逐尝试追踪；变更只影响新请求 |
 | `--failover-max` | `0` | 请求在「一个字节都还没发给下游」之前失败时，最多再换几个凭证就地重放；`0` 表示如实把失败回给下游 |
 | `--retry-write-timeout` | `false` | 让「写请求体超时」也参与重放（换新连接与 `--failover-max` 换凭证），代价是已发出的那半截正文可能已被上游处理 |

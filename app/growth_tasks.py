@@ -14,6 +14,9 @@ from urllib.parse import quote
 
 import httpx
 
+from .settings import verify_ssl
+
+
 HOST = "https://www.workbuddy.cn"
 TASKS_PATH = "/v2/activity/growth/tasks"
 ACCEPT_PATH = "/v2/activity/growth/tasks/accept"
@@ -124,7 +127,7 @@ def _parse_task(raw):
 
 def list_tasks(token, uid="", domain="", *, platform=WEB_PLATFORM):
     """Fetch one platform's task list; returns normalized task dicts."""
-    with httpx.Client(follow_redirects=False) as client:
+    with httpx.Client(follow_redirects=False, verify=verify_ssl()) as client:
         data = _growth_request(client, token, uid, domain, "GET", TASKS_PATH, platform=platform)
     tasks = data.get("tasks") if isinstance(data, dict) else None
     if not isinstance(tasks, list):
@@ -143,7 +146,7 @@ def merged_tasks(token, uid="", domain=""):
 def accept_tasks(token, codes, uid="", domain="", *, platform=WEB_PLATFORM):
     if not isinstance(codes, list) or not codes or not all(isinstance(code, str) for code in codes):
         raise Failure("protocol")
-    with httpx.Client(follow_redirects=False) as client:
+    with httpx.Client(follow_redirects=False, verify=verify_ssl()) as client:
         _growth_request(client, token, uid, domain, "POST", ACCEPT_PATH,
                         body={"task_codes": codes}, platform=platform)
 
@@ -151,7 +154,7 @@ def accept_tasks(token, codes, uid="", domain="", *, platform=WEB_PLATFORM):
 def claim_reward(token, code, uid="", domain="", *, platform=WEB_PLATFORM):
     """Claim one reward; returns (credit, energy, already_claimed)."""
     path = "/activity/growth/tasks/" + quote(code, safe="") + "/claim"
-    with httpx.Client(follow_redirects=False) as client:
+    with httpx.Client(follow_redirects=False, verify=verify_ssl()) as client:
         try:
             data = _growth_request(client, token, uid, domain, "POST", path,
                                    body=None, platform=platform, claim=True)

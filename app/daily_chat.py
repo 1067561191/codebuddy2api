@@ -17,6 +17,7 @@ import httpx
 
 from . import acp_client, credits
 from .credits import BROWSER_UA
+from .settings import verify_ssl
 from .site_routing import PROFILE_ENDPOINTS
 
 HOST = PROFILE_ENDPOINTS["intl-work"]
@@ -312,7 +313,7 @@ def perform(token, profile, *, uid="", domain="", can_write=lambda: True,
             return stop("changed", skipped=True)
         result["phase"] = "conversation"
         result["usage_before"] = _usage_credits(token, uid, domain)
-        with httpx.Client(follow_redirects=False) as client:
+        with httpx.Client(follow_redirects=False, verify=verify_ssl()) as client:
             headers = _console_headers(token, uid, domain)
             conversation_id = create_conversation(client, headers)
             result["conversation_id"] = conversation_id

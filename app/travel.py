@@ -6,6 +6,7 @@ import time
 import httpx
 
 from . import buddy
+from .settings import verify_ssl
 
 HOST = "https://www.workbuddy.cn"
 PREFIX = "/activity/growth/buddy/travel/"
@@ -202,7 +203,7 @@ def perform(token, profile, *, read_only=False, can_write=lambda: True, buddy_co
             context = buddy_context or {}
             return buddy.audit_event(context.get("audit"), context.get("identity"), profile, stage, outcome,
                                      result.get("consent_source"))
-        with httpx.Client(follow_redirects=False) as client:
+        with httpx.Client(follow_redirects=False, verify=verify_ssl()) as client:
             previous = write_store("travel_write_record") if store is not None and identity else None
             observed_attempt = previous["attempt_id"] if previous else None
             result.update(_status(_request(client, token, "status")))

@@ -4109,9 +4109,23 @@ def _prepare_chat_body(body: dict, *, region=None, session_payload=None) -> dict
 
 
 def _upstream_chat_body(body: dict) -> dict:
-    """Exclude process-local metadata from both wire JSON and its byte budget."""
-    return {key: value for key, value in body.items()
-            if key is not _REQUEST_POLICY_KEY and not (isinstance(key, str) and key.startswith("_"))}
+    """Build the wire body: drop process-local metadata and use the upstream output-limit name.
+
+    The upstream Chat endpoint only accepts `max_tokens`, while several client harnesses send
+    `max_completion_tokens`. Rename it here so every entry point (chat, responses, messages,
+    server tools and their retries) reaches the wire through this one function.
+    """
+    wire = {}
+    for key, value in body.items():
+        if key is _REQUEST_POLICY_KEY or (isinstance(key, str) and key.startswith("_")):
+            continue
+        if key == "max_completion_tokens":
+            # The upstream rejects the Responses-era name; an explicit max_tokens wins.
+            if "max_tokens" in body:
+                continue
+            key = "max_tokens"
+        wire[key] = value
+    return wire
 
 
 def _guard_request_size(body: dict) -> int:

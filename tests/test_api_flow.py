@@ -274,5 +274,41 @@ class PreparationResponsivenessTests(GatewayFixture, unittest.IsolatedAsyncioTes
                         self.assertFalse(thread.is_alive())
 
 
+class MaxCompletionTokensTests(GatewayFixture, unittest.TestCase):
+    """Every protocol renames the Responses-era output limit before it reaches the wire."""
+
+    def test_wire_body_uses_max_tokens(self):
+        body = gateway._upstream_chat_body({"model": "m", "max_completion_tokens": 9, "_internal": 1})
+        self.assertEqual(body, {"model": "m", "max_tokens": 9})
+        # An explicit max_tokens wins over the alias, and the caller's dict is never mutated.
+        both = {"max_tokens": 1, "max_completion_tokens": 2}
+        self.assertEqual(gateway._upstream_chat_body(both), {"max_tokens": 1})
+        self.assertEqual(both, {"max_tokens": 1, "max_completion_tokens": 2})
+
+    def test_all_entry_points_send_only_max_tokens(self):
+        for route in fixtures.GENERATIONS:
+            with self.subTest(route=route):
+                self.fx.configure(profiles=("cn-cli",))
+                payload = self.fx.payload(route)
+                payload.pop("max_tokens", None)
+                payload.pop("max_output_tokens", None)
+                payload["max_completion_tokens"] = 41
+                seen = []
+
+                def record(request):
+                    seen.append(request)
+                    return httpx.Response(200, json={"choices": [{"message": {"role": "assistant",
+                                                     "content": "ok"}, "finish_reason": "stop"}],
+                                                     "usage": {"prompt_tokens": 1, "completion_tokens": 1}})
+
+                with self.responder(record):
+                    response = self.fx.client.post("/v1/" + route, json=payload)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(len(seen), 1)
+                sent = seen[0].read().decode("utf-8")
+                self.assertIn('"max_tokens":41', sent.replace(" ", ""))
+                self.assertNotIn("max_completion_tokens", sent)
+
+
 if __name__ == "__main__":
     unittest.main()

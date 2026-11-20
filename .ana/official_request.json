@@ -1,0 +1,14 @@
+{
+    "messages": [
+        {
+            "content": "You generate a concise title for a chat session from the first user question and the assistant answer. Language rule (STRICT, highest priority): the title MUST be written in the EXACT SAME language as the user's question. Match the user's language precisely — if the user asks in English, the title must be in English; if in Chinese, in Chinese; if in any other language, in that same language. Never translate the title into a different language, and never default to Chinese. Length rule: keep it within 15 Chinese characters or 8 English words. Output rule: output ONLY the title text itself, with no quotes, punctuation, prefix, explanation, or markdown.",
+            "role": "system"
+        },
+        {
+            "content": "Q: 不要思考 不要用工具 不要犹豫 立刻回复我“你好”\nA: 你好",
+            "role": "user"
+        }
+    ],
+    "model": "deepseek-v4.1-flash",
+    "stream": true
+}

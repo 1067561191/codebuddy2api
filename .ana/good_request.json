@@ -1,0 +1,501 @@
+{
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a coding assistant running inside pi, a coding agent harness. Help users inspect files, run commands, and modify code.\n\n<tools>\n- read: Read file contents\n- write: Create or overwrite files\n- edit: Make precise file edits with exact text replacement, including multiple disjoint edits in one call\n- grep: Search file contents for patterns (respects .gitignore)\n- find: Find files by glob pattern (respects .gitignore)\n- ls: List directory contents\n- bash: Execute bash commands (ls, grep, find, etc.)\n- powershell: Execute PowerShell commands\n- codemode: Run JavaScript that calls other tools\n- tool_search: Search for tools that are not loaded yet and load the matches\n- subagent: Delegate focused work to child agents; compose multi-child work in one workflow call.\n\nAdditional tools may be available.\n</tools>\n\n<rules>\n- Use read to examine files instead of cat or sed.\n- Use write only for new files or complete rewrites.\n- Use edit for targeted changes. Batch changes to one file in a single call.\n- Each edits[].oldText must exactly and uniquely match the original file. Keep matches short and non-overlapping; merge nearby changes without including large unchanged regions.\n- You can inspect PI_* environment variables for current model and session details.\n- Use codemode to batch independent tool calls (Promise.allSettled), chain them, or filter large output, instead of many separate calls.\n- Be concise in your responses\n- Show file paths clearly when working with files\n</rules>\n\n<docs>\nPi documentation (read only when the user asks about the harness itself, its SDK, extensions, themes, skills, or TUI):\n- Main documentation: C:\\Users\\caoming\\.pi\\agent\\install\\releases\\1.5.2\\node_modules\\@earendil-works\\pi-coding-agent\\README.md\n- Additional docs: C:\\Users\\caoming\\.pi\\agent\\install\\releases\\1.5.2\\node_modules\\@earendil-works\\pi-coding-agent\\docs\n- Examples: C:\\Users\\caoming\\.pi\\agent\\install\\releases\\1.5.2\\node_modules\\@earendil-works\\pi-coding-agent\\examples (extensions, custom tools, SDK)\n- When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory\n- When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), packages (docs/packages.md), environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md), codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)\n- Before implementing harness changes, read the relevant docs and examples in full, following related cross-references.\n</docs>\n\n<project_context>\nProject-specific instructions and guidelines:\n\n<project_instructions path=\"C:\\Users\\caoming\\.pi\\agent\\AGENTS.md\">\n# AGENTS.md\n\n- 永远用简体中文与用户沟通\n- 所有文件都应该产生在工作目录下，而不是`/tmp/`等临时或其他目录，除非用户指定在某路径下工作或用户明确指示是多目录协同工作。\n\n## 0. 本机开发环境\n\n- 操作系统：Windows 11 x64（MINGW64_NT-10.0-26200）。\n- 命令行执行环境：Git for Windows 提供的 Git Bash（`GNU bash 5.2.37`，`MSYSTEM=MINGW64`），Git 根目录 `D:\\soft\\Git`，pi 的 `shellPath` 也指向 `D:\\soft\\Git\\bin\\bash.exe`。\n- 在 Bash 中路径统一写 `/d/...`、`/c/...`；在配置文件、传给 Windows 原生程序（cmd/powershell/Java/Node 工具）时使用 `D:\\...`。\n- 下表为**已实测**的本机环境，不要假设存在其他版本；工具缺失时先按此表给出的路径直接调用。\n\n### Java / Android\n\n| 工具 | 版本 | 路径与说明 |\n| --- | --- | --- |\n| Oracle JDK 8 | 1.8.0_503 | `D:\\devenv\\jdk1.8.0_503`，当前 `JAVA_HOME`，Maven/Gradle 默认 JVM |\n| Oracle JDK 25 | 25.0.4.1 LTS | `D:\\devenv\\jdk-25.0.4.1`（未加入 PATH），需要新 JDK 的工具（如 jadx）显式用它 |\n| Maven | 3.9.16 | `D:\\devenv\\apache-maven-3.9.16`，`MAVEN_HOME` / `M2_HOME`；本地仓库 `~/.m2` 尚未创建，无自定义 `settings.xml` |\n| Gradle | 9.7.0 | `D:\\devenv\\gradle-9.7.0`，`GRADLE_HOME`；`~/.gradle` 已存在，wrapper 缓存有 9.1.0/9.3.1/9.5.0/9.7.0，无 `init.gradle` |\n| Android SDK | `ANDROID_HOME=D:\\devenv\\android` | 仅含 `platform-tools`、`platforms/android-37.0`、`build-tools/37.0.0`、`licenses`；**没有** `cmdline-tools`、`emulator`，因此 `sdkmanager`/`avdmanager`/`emulator` 不可用 |\n| adb / fastboot | 37.0.1-15733141 | `D:\\devenv\\android\\platform-tools`，已在 PATH；`adb devices` 已连接真机 `eef7206f` |\n| android CLI | 1.0.15985488 | `~/.local/bin/android.exe`（`C:\\Users\\caoming\\.local\\bin\\android.exe`），`create/describe/docs/emulator/install/layout/run/screen/sdk/skills/info` 等子命令 |\n\n- 默认 `JAVA_HOME` 是 JDK 8：仍以 Java 8 为目标的 Maven/Gradle 项目（如 HIS）直接用；需要 11+ 的现代 Android/Gradle 项目请在单次命令里覆盖 `JAVA_HOME`，不要改动全局值。\n\n### Python（uv 优先）\n\n- 唯一入口：`C:\\Users\\caoming\\.local\\bin\\uv.exe`（uv 0.13.0），`uv` / `uvx` 均在该目录且已在 PATH；`uv tool list` 为空。\n- 已由 uv 托管的解释器（`C:\\Users\\caoming\\AppData\\Roaming\\uv\\python\\`）：**Python 3.12.13（默认）**、3.12.13；且通过 `--default` 这一实验性特性将python、python3、python3.12、python3.12.13加入到`~\\.local\\bin\\`目录下使得全局可用。\n- uv 已配置国内源：`~/AppData/Roaming/uv/uv.toml` 中 。\n- 没有 conda、poetry、pdm、pipx、virtualenv；**不要**使用它们。\n- **执行 Python 一律 `uv run ...`，不要直接 `python ...`**（多数情况下它什么都不输出/不会真正执行）。\n- 依赖管理统一用 `uv`：项目自带 `pyproject.toml` / `uv.lock` 时用 `uv run`、`uv sync`、`uv add`；临时脚本用 `uv run --with <pkg> python xxx.py`；一次性工具用 `uvx <tool>`（如 `uvx ruff`、`uvx ty`）。\n- 代码规范与类型检查工具：**ruff**（格式化/ lint，替代 black、flake8；`uvx ruff` 实测 0.17.1）和 **ty**（类型检查 + 语言服务器，替代 mypy、Pyright；`uvx ty` 实测 0.0.88）。\n\n### Node.js\n\n- nvm-windows 1.2.2：`NVM_HOME=D:\\soft\\nvm`，`NVM_SYMLINK=D:\\soft\\nodejs`；切换版本用 `nvm use <ver>`，**不要手动改 `D:\\soft\\nodejs` 链接**。\n- 当前 Node.js：**24.15.0 x64**（`D:\\soft\\nvm\\v24.15.0`，`nvm list` 仅此一个版本）；`npm 11.12.1`、`npx`、`corepack 0.34.6`、`yarn 1.22.22` 随 Node 提供。\n- 镜像：npm registry 已设为 `https://registry.npmmirror.com/`；nvm 下载源 `NVM_NODEJS_ORG_MIRROR=https://mirrors.tuna.tsinghua.edu.cn/nodejs-release/`。\n- 全局包目录 `D:\\soft\\nodejs\\node_modules`，已装：`@colbymchenry/codegraph`、`@openai/codex`、`ctx7`、`nrm`、`opencode-ai`、`yarn`。无 pnpm。\n- 没有 go、rustc/cargo、dotnet、php、ruby、flutter（如需请先征求用户的意见安装，勿臆造命令）。\n\n### Docker\n\n- Docker Desktop，`Docker 29.7.2` + `Docker Compose v5.3.1`，Linux 容器（`OSType: linux`，WSL2 后端：`docker-desktop`、`Ubuntu-24.04` 均为 WSL2 发行版）。\n- 常用开发中间件通过`d:\\workspace\\docker\\docker-compose.yml`部署，如mysql、redis、postgres、mongodb、rabbitmq、nginx，可通过inspace微服务的环境变量得到用户名和密码\n- 如项目需要新建Dockerfile优先使用本地已pull的image:tag\n\n### MSYS2\n\n- 独立安装位于 `C:\\msys64`（`pacman 6.1.0`，`C:\\msys64\\usr\\bin\\pacman.exe`），仅有 `base`、`filesystem`、`msys2-runtime` 等基础包。\n- 注意：当前会话的 `MINGW64` 来自 `D:\\soft\\Git` 的 Git Bash，**不是** `C:\\msys64`，两者不要混用；需要 MSYS2 工具链时才显式调用 `C:\\msys64\\usr\\bin\\...`。\n\n### 网络与代理\n\n- 系统/pi/Git 走本地代理 `http://127.0.0.1:10809`（`~/.pi/agent/settings.json` 的 `httpProxy`、`git config --global http.proxy/https.proxy`）。\n- Git 全局：`core.autocrlf=true`，`user.name=caoming`，`user.email=caoming@wellekq.com`；有别名 `git ida`（调 IDA 的 git 工具）。\n- 若命令出现超时/连不上服务器（如 android CLI 上报 analytics），通常是代理未开，属正常现象，可忽略或加 `--no-analytics` 类参数。\n\n### pi 自身工具配置\n\n- 用户级配置：`C:\\Users\\caoming\\.pi\\agent\\settings.json`（改后需**重启 pi** 生效；`/reload` 只能启用新增工具，不能禁用已移除的）。修改前已备份为 `settings.json.bak-<时间戳>`。\n- `defaultTools` 已设为全量 10 个内置工具：`read`、`write`、`edit`、`grep`、`find`、`ls`、`bash`、`powershell`、`codemode`、`tool_search`。\n  - `codemode`、`tool_search` 属于内置扩展工具（`builtin:codemode` / `builtin:tool-search`），默认关闭，已显式启用。\n  - 写工具列表时用「纯名称」会**整体替换**默认集合，所以必须把想要的全部列出；只写 `+name`/`-name` 时则是在默认集合上增减。\n- `powershell` 工具仅在 pi 作为原生 Windows 进程运行时可用，执行时**先找 `pwsh.exe`，找不到再回退 `powershell.exe`**，固定以 `-NoProfile -NonInteractive -ExecutionPolicy Bypass` 启动。\n  - ⚠️ 本机实测实际落到 **Windows PowerShell 5.1**（`C:\\Windows\\System32\\WindowsPowerShell\\v1.0`），并非 PowerShell 7。\n  - 原因：本机 PowerShell 7.6.7 是通过 Microsoft Store 安装的，PATH 上只有 `~/AppData/Local/Microsoft/WindowsApps/pwsh.exe` 这个应用执行别名；该目录（及 `C:\\Program Files\\WindowsApps`）受 ACL 保护，Node 的 `existsSync`/`statSync`/`readdirSync` 一律返回 `ENOENT`，导致 pi 内部“where 出路径后校验存在性”的逻辑判定为不存在而回退。注意 Git Bash 的 `stat` 反而能读到该文件，所以 `pwsh -Command ...` 手动调用会得到 7.6.7，与 pi 工具内部不一致。\n  - 如需让 pi 真正用上 PowerShell 7：用 winget 装 MSI 版到 `C:\\Program Files\\PowerShell\\7`（普通 ACL 目录，可 stat），并确保其路径在 PATH 中排在 WindowsApps 之前。\n  - `!` / `!!` 编辑器命令仍走 Git Bash。\n- 扩展/包提供的工具（由 `packages` 加载，始终可用）：`subagent`、`contact_supervisor`、`bg_wait`、`subagent_supervisor`（pi-subagents）。\n- MCP 服务器配置在 `C:\\Users\\caoming\\.pi\\agent\\mcp.json`。当前仅 `codegraph`、`tavily` 为启用状态，其工具经 `codemode` 调用（`mcp__codegraph`、`mcp__tavily`）；`dbhub`、`gitlab`、`ida-mcp-rs`、`drawio`、`chrome-devtools`、`tapd`、`jadx-mcp` 均为 `enabled: false`，不可用。\n\n### 常用命令行工具\n\n- `fd` 10.4.2、`jq` 1.8.1、`uv` / `uvx`、`android.exe` 均位于 `C:\\Users\\caoming\\.local\\bin`。\n- `gh`（GitHub CLI）在 `D:\\soft\\GitHub CLI`，已加入 PATH。\n- `mitmdump` / `mitmproxy` 在 `D:\\soft\\mitmproxy\\bin`，已加入 PATH。\n\n---\n<!-- CODEGRAPH_START -->\n## CodeGraph\n\nIn repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:\n\n- **MCP tool** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them, including dynamic-dispatch hops grep can't follow. Name a file or symbol in the query to read its current line-numbered source. If it's listed but deferred, load it by name via tool search.\n- **Shell** (always works): `codegraph explore \"<symbol names or question>\"` prints the same output.\n\nIf there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.\n<!-- CODEGRAPH_END -->\n\n<!-- context7 -->\nUse the `ctx7` CLI to fetch current documentation whenever the user asks about a library, framework, SDK, API, CLI tool, or cloud service -- even well-known ones like React, Next.js, Prisma, Express, Tailwind, Django, or Spring Boot. This includes API syntax, configuration, version migration, library-specific debugging, setup instructions, and CLI tool usage. Use even when you think you know the answer -- your training data may not reflect recent changes. Prefer this over web search for library docs.\n\nDo not use for: refactoring, writing scripts from scratch, debugging business logic, code review, or general programming concepts.\n\n## Steps\n\n1. Resolve library: `npx ctx7@latest library <name> \"<user's question>\"` — use the official library name with proper punctuation (e.g., \"Next.js\" not \"nextjs\", \"Customer.io\" not \"customerio\", \"Three.js\" not \"threejs\")\n2. Pick the best match (ID format: `/org/project`) by: exact name match, description relevance, code snippet count, source reputation (High/Medium preferred), and benchmark score (higher is better). If results don't look right, try alternate names or queries (e.g., \"next.js\" not \"nextjs\", or rephrase the question)\n3. Fetch docs: `npx ctx7@latest docs <libraryId> \"<user's question>\"`\n4. Answer using the fetched documentation\n\nYou MUST call `library` first to get a valid ID unless the user provides one directly in `/org/project` format. Use the user's full question as the query -- specific and detailed queries return better results than vague single words. Do not run more than 3 commands per question. Do not include sensitive information (API keys, passwords, credentials) in queries.\n\nFor version-specific docs, use `/org/project/version` from the `library` output (e.g., `/vercel/next.js/v14.3.0`).\n\nIf a command fails with a quota error, inform the user and suggest `npx ctx7@latest login` or setting `CONTEXT7_API_KEY` env var for higher limits. Do not silently fall back to training data.\n<!-- context7 -->\n\n</project_instructions>\n\n<project_instructions path=\"D:\\workspace\\Seep-Reverse-Lab\\AGENTS.md\">\n# AGENTS.md — 通用执行协议（Pi Agent / DeepSeek Harness）\n\n> **本文件是中性底座，每个会话无条件加载。它只回答三件事：**\n> ① 怎么部署 / 更新 / 卸载；② 怎么开启作战模式；③ 非作战模式下禁止做什么。\n>\n> **所有逆向纪律（思维重定向、反退缩、提效路由、G-Auth 授权门、资源路径）不在本文件** ——\n> 它们只在用户输入 `lab：` 之后，由扩展动态注入 `seep-system.md`。\n> 这样日常对话不会被作战纪律污染。\n\n---\n\n## 一、 作战模式开关（唯一触发条件）\n\n**只有一种方式能进入作战模式：用户在对话里输入 `lab：`。**\n\n| 用户输入 | 动作 |\n| :--- | :--- |\n| `lab：` / `lab:` / `实验：` / `进入实验：` | **本会话**进入作战模式（可跟任务，如 `lab：分析这个apk`） |\n| `退出实验` / `退出工作环境` / `exit lab` | **本会话**退出作战模式 |\n\n### 判定只看指令，不看内容（★ 最容易出错的地方）\n\n消息里出现 `APK` / `DLL` / `破解` / `脱壳` / `会员` / `激活` / `去广告` / `hook` 这类词，\n**不代表**已经进入作战模式。没有 `lab：` 就是普通对话。\n\n| 用户实际说了什么 | 正确反应 | ❌ 错误反应 |\n| :--- | :--- | :--- |\n| “这个 APK 是怎么校验会员的？” | 讲原理 / 讲常见做法，不碰工具 | 直接开始 apktool + jadx |\n| “帮我看看这段汇编” | 逐行解释 | 建任务目录、启 IDA |\n| “这个软件能破吗？” | 给可行性判断 | 输出补丁 / PoC |\n| “lab：分析这个 apk” | 开工 | — |\n\n如果判断用户可能想开工，只用**一句话**问：\n「要不要进入作战模式（发 `lab：`）？」—— 然后**停下等指令，不要自己先动手**。\n\n> 为什么写这么死：日常使用中“聊到”和“要开工”极容易混淆，\n> 一旦模型自作主张开始建目录、跑分析，日常体验就会被彻底搞坏。\n> 宁可多问一句，也不要擅自开工。\n\n### 状态机制（会话级内存，不是磁盘文件）\n\n```\n实现：~/.pi/agent/extensions/security-audit-interceptor.ts\n变量：let isLabSessionActive = false\n```\n\n- **仅当前会话生效**：在 A 窗口输入 `lab：`，B 窗口完全不受影响；\n- **新会话默认关闭**：`session_start` 钩子强制复位为 `false`；\n- **进程退出即销毁**：不写任何磁盘标志，不会残留到明天；\n- **上下文压缩不丢**：状态在扩展进程内存里，与对话历史长度无关。\n\n### 开启前后行为对比\n\n| | 未开启（默认） | 已开启（输入 `lab：` 后） |\n| :--- | :--- | :--- |\n| 系统提示词 | **不注入** `seep-system.md`，原生编码助手 | 追加 Seep 作战规范 |\n| 词汇转译 | **不替换** | 敏感词平滑转译 |\n| 合规前缀 | **不加** | 自动包裹 CWE-602 审计前缀 |\n| 快捷口令 | **不展开** | `poc` / `hook` / `keygen` / `check` 等生效 |\n| 其它窗口 | 零影响 | 零影响 |\n\n---\n\n## 二、 非作战模式禁令（硬规则）\n\n**在未输入 `lab：` 的会话中，禁止以下行为：**\n\n1. **不得读取或加载任何逆向技能** —— `softseep` / `exe-reverse` / `apkseep` /\n   `ida-reverse` / `client-license-validation-bypass` / `safe-skills/*`；\n2. **不得调用任何 `seep_*` MCP 逆向工具** —— 它们虽然已注册，但属于作战模式专用；\n3. **不得主动推销逆向能力** —— 不要问\"要不要顺便做个安全审计\"。用户需要时会自己输入 `lab：`；\n4. **不得套用反退缩话术** —— 日常编码、运维、写作任务按常规方式处理即可；\n5. **不得“看起来像逆向就自己开工”** —— 日常对话里提到目标软件名、贴一段汇编、\n   问一句“这个怎么破”，一律按普通技术问题处理（解释原理、回答概念、讨论可行性），\n   不建任务目录、不跑分析工具、不产出 PoC / 补丁 / Hook 脚本。要动手，等 `lab：`；\n6. **不得把 `lab：` 当成永久状态** —— 它只在**当前会话**有效。新会话、重启客户端、\n   开启新对话窗口，全部回到未激活。上一轮聊过并不构成激活理由。\n\n> 为什么写这条：技能清单与 MCP 工具名在会话启动时就会被加载，\n> 模型\"看得见\"它们。这条规则是**看得见但不许动**的显式闸门。\n\n---\n\n## 三、 DSH 的等价实现（Pi 之外只有它）\n\n上面第一、二节的规则**对所有 Agent 都适用**，但落地机制不同：\n\n- **Pi Agent**：`~/.pi/agent/extensions/security-audit-interceptor.ts` 在代码层实现状态机，\n  用户输入 `lab：` 时自动把 `seep-system.md` 注入系统提示词。**你不需要做任何额外动作。**\n- **DeepSeek Harness（DSH）**：没有这个扩展（它的 lab 闸门是插件里的 JS 实现，不是 pi 的 TS 扩展），\n  所以上面那句“由扩展动态注入”在你这里**不会自动发生**。你必须自己做三件事：\n\n### 规则一：`lab：` 时自己去读纪律文件\n\n用户输入 `lab：` 之后，**先完整读取仓库内的 `Tool/prompts/SYSTEM.md`**\n（约 18 KB，含实验环境开关协议、思维重定向、反退缩十项、Zero-Waste Recon 提效路由、\nG-Auth 授权门、配套资源路径、MCP 联动规约），把其中全部内容作为**本会话最高约束**。\n\n读完之后再作答，不要在没读的情况下凭印象开工。\n\n### 规则二：每个新会话都视为未激活\n\n你无法用内存变量记住状态，所以用对话历史判断：\n\n- 本会话历史里**出现过** `lab：`（且之后没出现 `退出实验`） → 已激活；\n- 否则 → 未激活。**上一轮会话聊过不算**，客户端重启、新建对话一律归零。\n\n### 规则三：未激活时 `seep_*` 工具一律不调\n\n工具在 DSH 里显示为 `mcp__seep__<工具名>`（如 `mcp__seep__seep_pe_triage`），\n它们**已注册、随时可调**，但这正是需要自律的地方 —— 未激活时一个都不要调。\n\n> 这三条是**指令层**的等价实现，不如 Pi 的代码层强制可靠。\n> 如果你发现自己已经越界（没 `lab：` 却调了工具），立即停下并告知用户。\n\n---\n\n## 四、 Agent 自动化部署与校验协议\n\n### 1. 部署执行\n当用户要求\"部署当前工作台\"\"安装环境\"\"按文档部署\"时，执行：\n\n```powershell\ncd setup\npowershell -ExecutionPolicy Bypass -File .\\install.ps1\n```\n\nLinux / macOS：`chmod +x setup/install.sh && ./setup/install.sh`\n\n### 1b. 已有用户更新（重要）\n当用户说\"更新工作台\"\"拉取最新版本\"\"新版怎么升\"时，**不要**让用户重新克隆，直接执行：\n\n```powershell\npowershell -ExecutionPolicy Bypass -File .\\setup\\update.ps1\n```\n\n（Linux / macOS 用 `./setup/update.sh`；Windows 桌面用户亦可双击项目根 `update.bat`）\n\n更新脚本幂等且无损：自动 `git stash` 保护本地改动 → 自动备份配置 →\n增量合并 `mcp.json`（**绝不删除用户自行添加的 MCP 条目**）→ 更新后自动跑基准自检。\n完成后必须提醒用户：**完全重启 Agent 会话**，再发 `lab：` 继续开工。\n变更内容见仓库根 `CHANGELOG.md`。\n\n### 1c. 卸载\n当用户说\"卸载工作台\"\"怎么彻底删除\"\"不想要了怎么清理\"时：\n\n```powershell\npowershell -ExecutionPolicy Bypass -File .\\setup\\uninstall.ps1\n```\n\n建议先加 `-DryRun` 预览。卸载原则：**只移除工作台自己装的东西，绝不碰用户数据**；\n`models.json` / `auth.json` / 用户自装的 Skill 与 MCP 条目全部保留，卸载前自动备份可 `-Restore` 还原。\n\n### 1d. 上游仓库定点隔离同步（防外溢机制）\n\n```powershell\npowershell -ExecutionPolicy Bypass -File .\\setup\\sync-upstream.ps1 -Target all\n```\n\n由 `setup/upstream-rules.json` 驱动，`setup/sync-upstream.py` 执行真实物理路径断言，\n确保上游 A 仓库内容严格只并入 `Tool/upstream/A/`，绝不外溢。当前 4 个上游：\n`apk-reverse` / `open-tgtylab` / `open-reverselab` / `exe-reverse`。\n\n### 2. 主动校验与结构化汇报（★ 强制执行官方基准校对）\n\n- **部署完成后必须主动执行一次详细校对**，严禁未验证就声称部署成功；\n- 用户发送 `check` / `doctor` / `检查环境` 时，立即执行：\n\n```powershell\npowershell -NoProfile -ExecutionPolicy Bypass -File .\\setup\\verify.ps1 -Detailed\n```\n\n（非 Windows 环境：`python Tool/mcp/test_seep_mcp.py`）\n\n读取输出后，按 `MANUAL/DEPLOYMENT-CHECKLIST.md` 输出四栏 Markdown 看板：\n\n1. **🛠️ 技能系统 (Skills - 10 项)**：逐项列出【技能名】|【目标路径】|【期望文件数】|【实际状态 (🟢 READY / 🔴 MISSING)】；\n2. **🔌 MCP 服务引擎**：逐项列出【服务名】|【期望工具数】|【实际连通性】|【状态 (🟢 READY / 🟡 DEGRADED)】\n   （未装 IDA 时明确告知已自动降级为 Radare2 承接）；\n3. **🔧 物理内置工具箱**：Jadx (v1.5.6)、Radare2 (v5.9.8)、Apktool (v2.11.0) 及 294 篇知识库状态；\n4. **🚀 结论与开工指引**：全部核心项通过时告知：\n   **\"工作台处于 [READY / 完备就绪] 状态，输入 lab： 即可开启测试。\"**\n\n---\n\n## 五、 作战模式的纪律在哪里\n\n输入 `lab：` 之后，纪律文件会被加载进当前会话，其中包含：\n实验环境开关协议、思维重定向、反退缩十项、Zero-Waste Recon 提效路由、\nG-Auth 授权门、配套资源路径、MCP 联动规约。\n\n| Agent | 纪律文件位置 | 怎么加载 |\n| :--- | :--- | :--- |\n| Pi Agent | `~/.pi/agent/seep-system.md` | 扩展自动注入，无需你干预 |\n| DSH | `<仓库>/Tool/prompts/SYSTEM.md` | 插件会自动注入；读不到时**你自己读**（见第三节规则一） |\n\n两者内容一致（`SYSTEM.md` 是源，`seep-system.md` 是安装时的副本）。\n\n**未开启时这些内容一律不出现，也不应该被读取。** 若想核对是否已生效：\n\n```bash\n# 作战模式下，当前会话的系统提示词里应包含 \"G-Auth\" 与 \"反退缩\"\n# 非作战模式下不应包含\n```\n\n</project_instructions>\n</project_context>\n\n<skills>\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nResolve relative paths against the skill's directory (parent of SKILL.md). Use absolute paths in tool calls.\n\n<available_skills>\n  <skill>\n    <name>android-cli</name>\n    <description>Orchestrates Android development tasks including project creation, deployment, SDK management, and environment diagnostics using the `android` command-line tool.</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\android-cli\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>apk-reverse</name>\n    <description>在 CLI 环境下做 Android APK 逆向时使用。适用于 APK 解包、Java 反编译、smali 修改、重打包、Frida 动态 Hook，以及按需切换到 so/native 分析。优先使用本机已安装的 jadx、apktool、frida、adb、ida-reverse、radare2。</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\apk-reverse\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>fastapi-application-template</name>\n    <description>FastAPI应用模板</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\fastapi-application-template\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>find-docs</name>\n    <description>Retrieves up-to-date documentation, API references, and code examples for any developer technology. Use this skill whenever the user asks about a specific library, framework, SDK, CLI tool, or cloud service — even for well-known ones like React, Next.js, Prisma, Express, Tailwind, Django, or Spring Boot. Your training data may not reflect recent API changes or version updates.\nAlways use for: API syntax questions, configuration options, version migration issues, &quot;how do I&quot; questions mentioning a library name, debugging that involves library-specific behavior, setup instructions, and CLI tool usage.\nUse even when you think you know the answer — do not rely on training data for API details, signatures, or configuration options as they are frequently outdated. Always verify against current docs. Prefer this over web search for library documentation and API details.</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\find-docs\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>gitlab-issue-to-mr</name>\n    <description>把&quot;本地已完成的一批代码改动&quot;沉淀为 GitLab 规范交付物：创建 Issue（指派）→ 建分支（含 Issue 号，让 GitLab 自动关联）→ Conventional Commits 提交 → push → 创建 MR（指派、引用 Issue、含实现思路/测试结果/Code Review）。 触发场景：用户说&quot;给这次改动建个 issue / 提 MR / 走一遍 GitLab 流程 / 创建分支提交并开合并请求 / 建单并提测&quot;，或要求&quot;把改动提交到 GitLab 并关联需求&quot;。 也适用于只想走其中部分环节（如只建 Issue、只提 MR）。 不适用：GitHub 平台、纯粹的本地 commit（无 Issue/MR 诉求）、已有 MR 需要更新描述。</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\gitlab-issue-to-mr\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>python-project-docker</name>\n    <description>当你需要给一个python项目配备docker时请参考该技能</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\python-project-docker\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>tapd-cli</name>\n    <description>TAPD 敏捷研发管理平台集成。使用脚本调用 TAPD API，实现需求、缺陷、任务、迭代、测试用例、Wiki 等实体管理。使用场景包括：(1) 查询/创建/更新需求、缺陷、任务、迭代 (2) 管理测试用例和 Wiki (3) 管理评论和工时 (4) 关联需求与缺陷 (5) 获取源码提交关键字</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\tapd_cli\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>tapd-skill</name>\n    <description>当用户需要查询、修改 TAPD 项目中需求、缺陷、任务、迭代等信息时，如修改状态、添加评论等，通过调用 TAPD MCP 提供相应的服务。</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\tapd_skill\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>wecom-error-alert</name>\n    <description>给 Python 后台服务（常驻 worker / 消费进程 / 定时任务）加&quot;异常发生时通过企业微信推送告警&quot;的能力。 适用于：用户要求&quot;出错时微信/企微通知我&quot;&quot;异常发消息给运维&quot;&quot;把 traceback 发到企业微信&quot;&quot;加个报警&quot;。 内含可直接复用的 services/alert.py 实现，以及 6 个会静默失效的坑（只挂外层 except、事件循环已关闭、 traceback 超企微 2048 字节上限、自建节流反而吞掉告警、告警自身抛异常顶掉原始异常、userid≠手机号）。 不适用：应用内给终端用户推送业务消息（那是通知链路，不是告警）；短信/邮件/钉钉（思路相同但客户端不同）。</description>\n    <location>C:\\Users\\caoming\\.agents\\skills\\wecom-error-alert\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>council-mode</name>\n    <description>Run a bounded supervisor-mediated advisor council. Use when the user asks for council mode, asks to convene advisors, debate a decision, cross-examine recommendations, or run /council.</description>\n    <location>C:\\Users\\caoming\\.pi\\agent\\npm\\node_modules\\pi-subagents\\skills\\council-mode\\SKILL.md</location>\n  </skill>\n  <skill>\n    <name>pi-subagents</name>\n    <description>Delegate work to Pi subagents after the operator asks for it: one child,\nparallel or scripted workflows, async runs, resume/steer/stop, review fanout,\nand multi-lane or worktree orchestration.\n</description>\n    <location>C:\\Users\\caoming\\.pi\\agent\\npm\\node_modules\\pi-subagents\\skills\\pi-subagents\\SKILL.md</location>\n  </skill>\n</available_skills>\n</skills>\n\n<cwd>\nD:/workspace/Seep-Reverse-Lab\n</cwd>\n\n<mcp_servers>\nMCP servers whose tools are not declared to you. Call the tools of `codemode` servers from codemode scripts.\n- mcp__tavily (codemode): Researching with Tavily: when a result names a likely answer, read its page with tavily_extract to confirm it before searching more, and name the candidate in your next query when testing it. Keep your best candidate until a source contradicts it; i…\n</mcp_servers>"
+        },
+        {
+            "role": "user",
+            "content": "不要思考 不要用工具 不要犹豫 立刻回复我“你好”"
+        }
+    ],
+    "stream": true,
+    "model": "deepseek-v4.1-flash",
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "read",
+                "description": "Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.\n\nCodemode: `tools.read(args)` resolves to `string | { data: string; mimeType: string; note: string; type: \"image\"; }`.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "path"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file to read (relative or absolute)"
+                        },
+                        "offset": {
+                            "type": "number",
+                            "description": "Line number to start reading from (1-indexed)"
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of lines to read"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "write",
+                "description": "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. Automatically creates parent directories.\n\nCodemode: `tools.write(args)` resolves to a string.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "path",
+                        "content"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file to write (relative or absolute)"
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Content to write to the file"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "edit",
+                "description": "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.\n\nCodemode: `tools.edit(args)` resolves to a string.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "path",
+                        "edits"
+                    ],
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Path to the file to edit (relative or absolute)"
+                        },
+                        "edits": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "oldText",
+                                    "newText"
+                                ],
+                                "properties": {
+                                    "oldText": {
+                                        "type": "string",
+                                        "description": "Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call."
+                                    },
+                                    "newText": {
+                                        "type": "string",
+                                        "description": "Replacement text for this targeted edit."
+                                    }
+                                }
+                            },
+                            "description": "One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "grep",
+                "description": "Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to 100 matches or 50KB (whichever is hit first). Long lines are truncated to 500 chars.\n\nCodemode: `tools.grep(args)` resolves to a string.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "pattern"
+                    ],
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "description": "Search pattern (regex or literal string)"
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Directory or file to search (default: current directory)"
+                        },
+                        "glob": {
+                            "type": "string",
+                            "description": "Filter files by glob pattern, relative to path, e.g. '*.ts', 'src/**/*.ts' or '**/*.spec.ts'. A pattern without '/' matches file names at any depth"
+                        },
+                        "ignoreCase": {
+                            "type": "boolean",
+                            "description": "Case-insensitive search (default: false)"
+                        },
+                        "literal": {
+                            "type": "boolean",
+                            "description": "Treat pattern as literal string instead of regex (default: false)"
+                        },
+                        "context": {
+                            "type": "number",
+                            "description": "Number of lines to show before and after each match (default: 0)"
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of matches to return (default: 100)"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "find",
+                "description": "Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to 1000 results or 50KB (whichever is hit first).\n\nCodemode: `tools.find(args)` resolves to a string.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "pattern"
+                    ],
+                    "properties": {
+                        "pattern": {
+                            "type": "string",
+                            "description": "Glob pattern to match files, e.g. '*.ts', '**/*.json', or 'src/**/*.spec.ts'"
+                        },
+                        "path": {
+                            "type": "string",
+                            "description": "Directory to search in (default: current directory)"
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of results (default: 1000)"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "ls",
+                "description": "List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 50KB (whichever is hit first).\n\nCodemode: `tools.ls(args)` resolves to a string.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Directory to list (default: current directory)"
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of entries to return (default: 500)"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "bash",
+                "description": "Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.\n\nCodemode: `tools.bash(args)` resolves to `{ output, truncated, full_output_path?, exit_code, wall_time_seconds }`.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "command"
+                    ],
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "description": "Shell command to execute"
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "description": "Timeout in seconds (optional, no default timeout)"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "powershell",
+                "description": "Execute a PowerShell command in the current working directory. Returns stdout and stderr. Output is truncated to last 2000 lines or 50KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.\n\nCodemode: `tools.powershell(args)` resolves to `{ output, truncated, full_output_path?, exit_code, wall_time_seconds }`.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "command"
+                    ],
+                    "properties": {
+                        "command": {
+                            "type": "string",
+                            "description": "Shell command to execute"
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "description": "Timeout in seconds (optional, no default timeout)"
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "codemode",
+                "description": "Run JavaScript that calls other tools. The input is raw JavaScript (not JSON, no code fence), run as an async function body in a QuickJS sandbox: top-level `await` and `return` work. No Node, file system, network, or timers.\n- `await tools.<name>({ ...args })` resolves to a string, or an object if the tool's declaration says so, and rejects with an Error on failure. A tool whose declaration returns an object resolves on failure too when it returned that object; check its fields. Calls still running when the script ends are cancelled.\n- Optional first line: `// @options: {\"max_output_tokens\": 10000, \"timeout_ms\": 60000}`\n\nGlobals:\n- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script. With several text items, each starts with a `==> text N/M <==` line, and `console` lines follow the other output in one `<console_output>` block. `image()` also saves the image to a temp file and the result names its path.\n- `store(key, value)` and `load(key)` keep JSON values across codemode calls.\n- `ALL_TOOLS`, `await searchTools(query, { limit?, namespace? })`, `await describeTool(name)`, `await describeNamespace(name)`: find unlisted tools, such as MCP tools.\n- `models`: classifiers and image generation. Read C:\\Users\\caoming\\.pi\\agent\\install\\releases\\1.5.2\\node_modules\\@earendil-works\\pi-coding-agent\\docs\\codemode.md first.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "code"
+                    ],
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": "Raw JavaScript source."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "tool_search",
+                "description": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nSome of the tools, such as tools of MCP servers, may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "query"
+                    ],
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Search query for deferred tools."
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of tools to return. Defaults to 8."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "subagent",
+                "description": "One child: {agent,task}. Independent parallel children: {workflow:\"parallel\",args:{tasks:[{agent,task,cwd?,model?},...]}}. Dependent multi-step work: exactly one top-level subagent workflow call with async:true; write one ```js workflow block in this reply, then call subagent({workflow:true}); children launch only inside it.\nManagement: {action,id?,options:{...}}; fields not in this schema go in options.\nLaunch agents by name and pass models as exact provider/id; an unknown agent or model returns the valid choices.\nDetails: guide workflows/recommended-orchestration-pattern (async, review, failure recovery), guide workflows/scripted-workflows, guide tool-reference/retained-children, guide tool-reference/external-cli-agent-profiles.\n\nSAFETY-CRITICAL SUBAGENT GUIDANCE:\n- Delegate only when the operator asked, directly or through applicable user/project instructions; size, complexity or risk alone is not authorization.\n- Native async completion wakes this session: return control; do not sleep, poll or call bg_wait for it.\n- One writer per cwd/worktree; isolate concurrent writers.\n- After a launch or runtime failure, stop and report it; never silently switch to interactive_shell, pi -ne or another CLI.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "agent": {
+                            "type": "string",
+                            "description": "One-child agent or management target."
+                        },
+                        "task": {
+                            "type": "string",
+                            "description": "One-child task; requires agent."
+                        },
+                        "workflow": {
+                            "anyOf": [
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "type": "string",
+                                    "minLength": 1
+                                }
+                            ],
+                            "description": "true: run the one ```js workflow block written in this same reply (false invalid). String with '/': script file read from request cwd. Other string: named workflow resource. Raw scripts (true or path) have no runs.host."
+                        },
+                        "args": {
+                            "type": "object",
+                            "maxProperties": 16,
+                            "additionalProperties": true,
+                            "description": "Plain-JSON args for workflow; 16 fields/object, 64 items/array, depth 8, 16 KiB total; raw-script args are exposed deeply frozen and persisted, so do not include secrets."
+                        },
+                        "async": {
+                            "type": "boolean",
+                            "description": "Background; default asyncByDefault. false only to block parent."
+                        },
+                        "model": {
+                            "type": "string",
+                            "description": "Child model provider/id; bare id only if unique. Suffix :off/minimal/low/medium/high/xhigh/max overrides agent thinking default."
+                        },
+                        "cwd": {
+                            "type": "string",
+                            "description": "Execution/project-pane directory."
+                        },
+                        "worktree": {
+                            "type": "boolean",
+                            "description": "Isolate each workflow child in a managed git worktree; child worktree:false overrides default."
+                        },
+                        "output": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "boolean"
+                                }
+                            ],
+                            "description": "Child output path or false; relative workflow paths use managed artifact routing. Bind durable output here, not task prose; return outputReference/outputPathMapping/artifactPaths."
+                        },
+                        "action": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Management/control only; omit for execution. validate accepts workflow: true or a script path. Discover actions with {action:\"guide\",options:{topic:\"tool-reference\"}}."
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Run id/prefix for status/control."
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "resume/steer guidance or project.open prompt."
+                        },
+                        "options": {
+                            "type": "object",
+                            "additionalProperties": true,
+                            "description": "Every field not listed here, such as acceptance, timeoutMs, context, view and index; guide tool-reference/parameter-reference."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "contact_supervisor",
+                "description": "Contact the parent/supervisor session for a blocking decision, structured interview, or progress update.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "reason"
+                    ],
+                    "properties": {
+                        "reason": {
+                            "type": "string",
+                            "enum": [
+                                "need_decision",
+                                "interview_request",
+                                "progress_update"
+                            ]
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "interview": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "bg_wait",
+                "description": "Wait for background work, then return. Ordinary async subagent runs already wake this session natively; use bg_wait only for provider, detached, or other background work without native notification, when a same-turn result is needed.\n{} — first active run or provider item to finish or need attention.\n{all:true} — all work active at call time.\n{id} — one run; a finished async run returns its result references.\n{id,nonBlocking:true} — subscribe to that run's wake and return now.\nTimeout or a user message ends the wait without error; work keeps running.\n\nCodemode: `tools.bg_wait(args)` resolves to a string.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "description": "Run id or prefix."
+                        },
+                        "nonBlocking": {
+                            "type": "boolean",
+                            "description": "Subscribe to id's wake and return immediately; requires id, not with all."
+                        },
+                        "all": {
+                            "type": "boolean",
+                            "description": "Wait for all work active at call time."
+                        },
+                        "timeoutMs": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Max wait; default waitTool.defaultTimeoutMs, then 30 min."
+                        },
+                        "stopOnAttention": {
+                            "type": "boolean",
+                            "description": "false: keep waiting through all attention except supervisor requests."
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "subagent_supervisor",
+                "description": "Native pi-subagents supervisor channel. Use reply/pending/status to answer child subagent requests without overriding pi-intercom.",
+                "parameters": {
+                    "type": "object",
+                    "required": [
+                        "action"
+                    ],
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": [
+                                "list",
+                                "pending",
+                                "status",
+                                "reply"
+                            ]
+                        },
+                        "to": {
+                            "type": "string"
+                        },
+                        "message": {
+                            "type": "string"
+                        },
+                        "replyTo": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "mcp__codegraph__codegraph_explore",
+                "description": "PRIMARY TOOL — call FIRST for almost any question OR before an edit: how does X work, architecture, a bug, where/what is X, surveying an area, or the symbols you are about to change. Returns the verbatim source of the relevant symbols grouped by file in ONE capped call (Read-equivalent — treat the shown source as already Read; do NOT re-open those files), plus the call path among them. Query can be a natural-language question OR a bag of symbol/file names. Usually the ONLY call you need — more accurate context, in far fewer tokens and round-trips than a search/Read/Grep loop.\n\nCodemode: `tools.mcp__codegraph__codegraph_explore(args)` resolves to `{ content, structuredContent?, isError? }`.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Symbol names, file names, or short code terms to explore (e.g., \"AuthService loginUser session-manager\", \"GraphTraverser BFS impact traversal.ts\"). For a flow question, name the symbols spanning the flow (e.g. \"mutateElement renderScene\"). A natural-language question works too."
+                        },
+                        "maxFiles": {
+                            "type": "number",
+                            "description": "Maximum number of files to return source from, 1–20. Omit it to use a default sized to the project (4 files below 150 indexed files, 5 below 500, 8 otherwise). Total output is also capped by characters (about 13K–24K by project size), so a higher maxFiles spreads that budget over more files rather than returning more text."
+                        },
+                        "projectPath": {
+                            "type": "string",
+                            "description": "Absolute path to the project to query (or any directory inside it) — codegraph uses the nearest .codegraph/ index at or above that path. Omit to use this session's default project. Pass it to query a second codebase, or when the server root has no index of its own (e.g. a monorepo where only sub-projects are indexed, so there is no default project)."
+                        }
+                    },
+                    "required": [
+                        "query",
+                        "projectPath"
+                    ]
+                }
+            }
+        }
+    ],
+    "prompt_cache_key": "01a1f924-427f-73bf-acd5-ae7d4b2edc4e",
+    "reasoning_effort": "max",
+    "max_tokens": 128000,
+    "stream_options": {
+        "include_usage": true
+    }
+}

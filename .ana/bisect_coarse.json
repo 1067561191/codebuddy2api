@@ -1,0 +1,67 @@
+{
+ "baseline.bad": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "baseline.official": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "baseline.good": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "bad.no_tools": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "bad.no_messages": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "bad.only_system": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "bad.only_reminders": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "bad.only_tools": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "bad.params_only": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "bad.sys_short": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "bad.tools_no_system": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "official.plus_bad_tools": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "official.plus_bad_messages": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ }
+}

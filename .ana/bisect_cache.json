@@ -1,0 +1,222 @@
+{
+ "a2816712168665ed": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "69293abd09b2d756": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "ebf7866db111e190": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "ab925b06e27e7f2d": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "0f6c0306f1eec10b": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "1ff200edf669e9c4": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "2664e73e55f9f8ca": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "a990e8aa88051b68": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "739e13f1e6434d2a": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "e6e5bddf2651fd96": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "11d00f14bb5b7871": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "61827f8d26175132": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "6718fbb94a6fe662": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "786f6c1ae5b1a1b1": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "ce22aea0762e605e": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "e5ee0078f0ea355f": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "142d597abee75ef0": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "081995d07c18362d": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "b5399b839cf2104f": {
+  "verdict": "other(11102)",
+  "status": 400,
+  "code": 11102
+ },
+ "fbe37e4e1bc15b58": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "c0f8469632f7a876": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "b4e58af207987e4a": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "74d50a47a0f261f6": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "ca4b9ce8b494b655": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "26c69f97121291a8": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "3bb4f5872b2f34b5": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "781cd9f21b919dfc": {
+  "verdict": "other(11102)",
+  "status": 400,
+  "code": 11102
+ },
+ "c2e743f9fef94397": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "8660c727d1b6e907": {
+  "verdict": "other(11102)",
+  "status": 400,
+  "code": 11102
+ },
+ "4dc23b73e0530e5c": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "1a5bfd604b7a715a": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "e0426f601148aac5": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "c144e018c03b24d1": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "96ce582067689b74": {
+  "verdict": "other(11101)",
+  "status": 400,
+  "code": 11101
+ },
+ "7e0ea11c3bb5a81b": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "cdc130abf59a91bf": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "a422494c2d78fdf7": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "a36c9fc47d160fb0": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "78cca150b7451dc6": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "8a8cf0d098681ab1": {
+  "verdict": "CHANNEL",
+  "status": 400,
+  "code": 11128
+ },
+ "50e5b50bb4a172d7": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "04f8bf85e3c331e6": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "c9a63b54e7eb237b": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ },
+ "77ac26f7df1db17f": {
+  "verdict": "ok",
+  "status": 200,
+  "code": null
+ }
+}

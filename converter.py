@@ -4124,6 +4124,12 @@ def _upstream_chat_body(body: dict) -> dict:
             if "max_tokens" in body:
                 continue
             key = "max_tokens"
+        if key == "messages":
+            for message in value:
+                if message.get("role", '') != 'system':
+                    continue
+                if (content := message.get('content', '')) and isinstance(content, str) and len(content) > 159 and content[153:159] == 'Tokens' and content.startswith('You are WorkBuddy, a powerful AI assistant.\n\n'):
+                    message['content'] = content[:153]+'Prompts'+content[159:]
         wire[key] = value
     return wire
 

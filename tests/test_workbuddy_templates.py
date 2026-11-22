@@ -143,6 +143,63 @@ class WorkBuddyBodyTests(unittest.TestCase):
                                 out,
                             )
 
+    def test_dsh_path_token_fingerprint_is_rewritten_as_a_substring(self):
+        fingerprint = (
+            "Tokens prefixed with @ are paths the user explicitly referenced. "
+            "Relative paths resolve from the workspace root"
+        )
+        fixed = fingerprint.replace("Tokens", "Names", 1)
+        tail = "; absolute paths identify files or directories on the host."
+        for model in ("deepseek-v4.1-flash", "glm-5.2", "kimi-k2"):
+            prefix = (
+                "You are WorkBuddy, a powerful AI assistant.\n\n"
+                "You are WorkBuddy, a powerful AI assistant. This conversation is powered by the "
+                f"{model} model.\n\n"
+            )
+            with self.subTest(model=model):
+                actual = desensitize_module.desensitize_channel_text(prefix + fingerprint + tail)
+                self.assertEqual(actual, prefix + fixed + tail)
+                self.assertNotIn("Tokens prefixed", actual)
+                self.assertEqual(desensitize_module.desensitize_channel_text(actual), actual)
+        variants = (
+            fingerprint.upper(),
+            fingerprint.lower(),
+            fingerprint.replace(" ", "  "),
+            re.sub(r"([A-Za-z])([A-Za-z]+)", rf"\1{ZWSP}\2", fingerprint),
+            "x" + fingerprint,
+        )
+        for variant in variants:
+            with self.subTest(variant=variant[:24]):
+                actual = desensitize_module.desensitize_channel_text(variant + tail)
+                self.assertIn(fixed, actual)
+                self.assertNotRegex(actual, r"(?i)tokens\s+prefixed\s+with\s+@\s+are\s+paths")
+                self.assertTrue(actual.endswith(tail))
+        for untouched in (
+            "Tokens prefixed with @ are paths",
+            "Use the read tool when its contents are needed.",
+            "workspace root",
+        ):
+            with self.subTest(untouched=untouched):
+                self.assertEqual(desensitize_module.desensitize_channel_text(untouched), untouched)
+
+    def test_path_token_fingerprint_follows_channel_role_rules(self):
+        fingerprint = (
+            "Tokens prefixed with @ are paths the user explicitly referenced. "
+            "Relative paths resolve from the workspace root"
+        )
+        fixed = fingerprint.replace("Tokens", "Names", 1)
+        for role in ("system", "developer", "assistant"):
+            for blocks in (False, True):
+                with self.subTest(role=role, blocks=blocks):
+                    body = {"messages": [{"role": role, "content": text_content(fingerprint + " stays.", blocks)}]}
+                    before = copy.deepcopy(body)
+                    out = desensitize_module.desensitize_channel_body(body)
+                    self.assertEqual(message_text(out["messages"][0]), fixed + " stays.")
+                    self.assertEqual(body, before)
+                    self.assertEqual(desensitize_module.desensitize_channel_body(out), out)
+        user = {"messages": [{"role": "user", "content": fingerprint}]}
+        self.assertEqual(desensitize_module.desensitize_channel_body(copy.deepcopy(user)), user)
+
     def test_channel_identity_guard_covers_instruction_and_assistant_roles(self):
         source = "You are an AI agent powered by DeepSeek Harness"
         expected = WORKBUDDY

@@ -147,6 +147,18 @@ _DSH_WEB_GUI_FINGERPRINT_PATTERN = re.compile(
     r"\bWeb GUI whose URL the runtime context names\.\s+When the user refers",
     re.IGNORECASE,
 )
+# The domestic channel check matches this sentence as one case-insensitive substring, including
+# when extra spaces or zero-width characters sit inside it. Rewriting the leading word is enough
+# to miss that substring while keeping the @-path instruction readable.
+_DSH_PATH_TOKEN_FINGERPRINT = (
+    "Tokens prefixed with @ are paths the user explicitly referenced. "
+    "Relative paths resolve from the workspace root"
+)
+_DSH_PATH_TOKEN_PATTERN = re.compile(_template_source(_DSH_PATH_TOKEN_FINGERPRINT), re.IGNORECASE)
+_DSH_PATH_TOKEN_FIXED = (
+    "Names prefixed with @ are paths the user explicitly referenced. "
+    "Relative paths resolve from the workspace root"
+)
 _CHANNEL_IDENTITY_FIXED = _DSH_WORKBUDDY_IDENTITY
 _CHANNEL_SYSTEM_DEFAULT = "You are a helpful assistant."
 _CHANNEL_INSTRUCTIONS_OPEN = "<instructions>\n"
@@ -267,7 +279,7 @@ def _replace_dsh_coding_persona(match: re.Match) -> str:
 
 
 def desensitize_channel_text(text: str) -> str:
-    """Convert official DSH role prompts without changing unrelated brand references."""
+    """Convert official DSH role prompts and the known path-token fingerprint."""
     if not text:
         return text
     text = _DSH_CODING_PATTERN.sub(_replace_dsh_coding_persona, text)
@@ -275,10 +287,11 @@ def desensitize_channel_text(text: str) -> str:
     text = _DSH_MINIMAL_PATTERN.sub(_CHANNEL_IDENTITY_FIXED, text)
     text = _DSH_DIRECT_PATTERN.sub(_CHANNEL_IDENTITY_FIXED, text)
     text = _DSH_WEB_GUI_PATTERN.sub("WorkBuddy Web GUI", text)
-    return _DSH_WEB_GUI_FINGERPRINT_PATTERN.sub(
+    text = _DSH_WEB_GUI_FINGERPRINT_PATTERN.sub(
         "Web GUI whose URL the runtime context names. The interface, when the user refers",
         text,
     )
+    return _DSH_PATH_TOKEN_PATTERN.sub(_DSH_PATH_TOKEN_FIXED, text)
 
 
 def _iter_text_blocks(content):

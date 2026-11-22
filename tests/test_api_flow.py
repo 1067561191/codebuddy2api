@@ -284,6 +284,14 @@ class MaxCompletionTokensTests(GatewayFixture, unittest.TestCase):
         both = {"max_tokens": 1, "max_completion_tokens": 2}
         self.assertEqual(gateway._upstream_chat_body(both), {"max_tokens": 1})
         self.assertEqual(both, {"max_tokens": 1, "max_completion_tokens": 2})
+        # Channel rewrites happen before this function. The wire copy must not edit messages.
+        messages = {"messages": [{"role": "system", "content": "Tokens prefixed with @"}],
+                    "max_completion_tokens": 3}
+        original = deepcopy(messages)
+        wire = gateway._upstream_chat_body(messages)
+        self.assertEqual(messages, original)
+        self.assertEqual(wire["messages"][0]["content"], "Tokens prefixed with @")
+        self.assertEqual(wire["max_tokens"], 3)
 
     def test_all_entry_points_send_only_max_tokens(self):
         for route in fixtures.GENERATIONS:
